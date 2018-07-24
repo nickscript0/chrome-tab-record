@@ -1,4 +1,9 @@
-chrome.browserAction.onClicked.addListener(function() {
-    console.log(`Content Script get an onClicked of the browserAction!`);
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.command === 'beginCapture') {
+        console.log(`Content Script beginning capture`);
 
-  });
+        // sendResponse({
+        //     data: payload
+        // });
+    }
+});

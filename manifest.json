@@ -16,7 +16,8 @@
         }
     ],
     "permissions": [
-        "tabs"
+        "tabs",
+        "tabCapture"
     ],
     "background": {
         "scripts": [
