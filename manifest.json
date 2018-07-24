@@ -1,0 +1,27 @@
+{
+    "name": "Tab Record",
+    "version": "0.1",
+    "description": "Records a video of the current tab",
+    "browser_action": {
+        "name": "Toggle Summary"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "build/content.js"
+            ]
+        }
+    ],
+    "permissions": [
+        "tabs"
+    ],
+    "background": {
+        "scripts": [
+            "build/background.js"
+        ]
+    },
+    "manifest_version": 2
+}

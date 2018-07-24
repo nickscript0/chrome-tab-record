@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+        "target": "es2015",
+        "lib": ["dom","es2016","dom.iterable","scripthost","webworker"],
+        "sourceMap": true,
+        "strictNullChecks": true,
+        // "outFile": "build/main.js",
+        "module": "commonjs",
+        "rootDir": "src",
+        "outDir": "build",
+        "allowJs": true
+    },
+    "include": [
+        "src/**/*"
+    ],
+    "exclude": [
+        "node_modules"
+    ],
+    "compileOnSave": false
+}
