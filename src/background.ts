@@ -5,7 +5,7 @@ let start = false;
 const recorder = new Recorder();
 
 chrome.browserAction.onClicked.addListener(function () {
-    if (!start) {
+    if (!recorder.isRecording) {
         console.log(`Begin tab capture`);
 
         recorder.start();
