@@ -11,9 +11,13 @@ module.exports = {
         filename: '[name].js',
         publicPath: '/build/'
     },
-    plugins: [
-        new WebpackNotifierPlugin({ excludeWarnings: true, alwaysNotify: true })
-    ],
+    // plugins: [
+    //     new WebpackNotifierPlugin({ excludeWarnings: true, alwaysNotify: true })
+    // ],
+	optimization: {
+		// We no not want to minimize our code.
+		minimize: false
+	},    
     devtool: 'source-map',
     resolve: {
         // Add `.ts` and `.tsx` as a resolvable extension.
