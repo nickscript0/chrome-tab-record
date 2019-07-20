@@ -3,7 +3,7 @@ const WebpackNotifierPlugin = require('webpack-notifier');
 
 module.exports = {
     entry: {
-        content: './src/content.ts',
+        display: './src/display.ts',
         background: './src/background.ts',
     },
     output: {
