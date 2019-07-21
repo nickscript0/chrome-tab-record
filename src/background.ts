@@ -1,19 +1,14 @@
 import { Recorder } from './recorder';
-
+import { Commands, UserConfig } from './types';
 
 let start = false;
 const recorder = new Recorder();
 
 chrome.browserAction.onClicked.addListener(function () {
+
     if (!recorder.isRecording) {
         console.log(`Begin tab capture`);
-
-        recorder.start((url, filename) => {
-            sendUrlToContentScript(url, filename);
-            start = false;
-
-        });
-        start = true;
+        requestConfigFromContentScript();
     } else {
         console.log(`End tab capture`);
 
@@ -40,3 +35,26 @@ function sendUrlToContentScript(videoUrl, filename) {
         }
     });
 }
+
+function requestConfigFromContentScript() {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        if (tabs[0].id) {
+            chrome.tabs.sendMessage(tabs[0].id, { command: Commands.PromptConfig });
+        } else {
+            console.log(`Error: no active tabs available`);
+        }
+    });
+}
+
+chrome.runtime.onMessage.addListener(
+    function (request, sender, sendResponse) {
+        if (request.command === Commands.ReturnConfig) {
+            recorder.start(request.data, (url, filename) => {
+                sendUrlToContentScript(url, filename);
+                start = false;
+            });
+            start = true;
+        }
+        sendResponse(null);
+    }
+);

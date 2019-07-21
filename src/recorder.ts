@@ -1,9 +1,11 @@
+import { UserConfig, Codecs } from "./types";
+
 // TODO: look into videoConstraints property on captureOptions to force vp9 to a smaller bitrate possibly?
 const captureOptions: chrome.tabCapture.CaptureOptions = { audio: true, video: true };
 // MediaRecorder is not available in chrome.ts
 declare var MediaRecorder;
 
-const codecs = {
+const codecsToMimeType: Codecs = {
     webm: 'video/webm', // 37 MB, 2min youtube record test, appears to be same as avc1
     vp8: 'video/webm;codecs=vp8', // 67 MB
     vp9: 'video/webm;codecs=vp9', // 234.6 MB
@@ -12,31 +14,46 @@ const codecs = {
 };
 
 // const videoType = 'webm';
-const videoType = 'h264';
+// const videoType = 'h264';
 // const videoType = 'vp9';
-const videoBitsPerSecond = 2500 * 1000;
+// const videoBitsPerSecond = 2500 * 1000;
+const defaultCodec = 'h264';
 
 export class Recorder {
     recordedChunks: any[];
     mediaRecorder;
     currentStream: MediaStream;
+    videoCodec: keyof Codecs;
+    config: UserConfig;
 
     constructor() {
         this.recordedChunks = [];
         this.mediaRecorder = null;
     }
 
-    start(cb) {
-        function createListener(self) {
+    start(config: UserConfig, cb) {
+        this.config = config;
+        function createListener(self: Recorder) {
             return (stream) => {
                 self.currentStream = stream;
                 if (self.currentStream) {
                     self.recordedChunks = [];
-                    const options = { mimeType: codecs[videoType], videoBitsPerSecond };
+                    self.videoCodec = defaultCodec;
+                    if (!Object.keys(codecsToMimeType).includes(config.encoder)) {
+                        console.log(`Unknown codec ${config.encoder} specified, defaulting to ${defaultCodec}`);
+                    } else {
+                        self.videoCodec = config.encoder;
+                    }
+                    const options = { mimeType: codecsToMimeType[self.videoCodec], videoBitsPerSecond: config.bitrateKbps * 1000 };
                     self.mediaRecorder = new MediaRecorder(self.currentStream, options);
                     self.mediaRecorder.start();
-                    // setTimeout(self.stop.bind(self), 30 * 60 * 1000); // DEBUG stop after 30min
-                    // setTimeout(self.stop.bind(self, cb), 30 * 1000); // DEBUG stop after 30s
+                    console.log(`Started recording with config ${JSON.stringify(config)}`);
+
+                    // Stop recording with timeout if user has specified stop recording after some minutes
+                    if (config.durationMinutes) {
+                        console.log(`Stopping recording after ${config.durationMinutes} minutes.`);
+                        setTimeout(self.stop.bind(self, cb), config.durationMinutes * 60 * 1000);
+                    }
 
                     self.mediaRecorder.ondataavailable = function (event) {
                         console.log(`ondataavailable with size`, event.data.size);
@@ -53,17 +70,17 @@ export class Recorder {
 
     stop(cb) {
         if (this.mediaRecorder.state !== 'inactive') this.mediaRecorder.stop();
-        const self = this;
+        const self: Recorder = this;
         this.mediaRecorder.onstop = function (event) {
-            console.log(`onstop(${videoType}), chunks length`, self.recordedChunks.length);
+            console.log(`onstop(${self.videoCodec}), chunks length`, self.recordedChunks.length);
 
             const blob = new Blob(self.recordedChunks, {
-                type: codecs[videoType]
+                type: codecsToMimeType[self.videoCodec]
             });
             self.currentStream.getTracks().forEach(track => track.stop());
             // self.save(blob);
             if (cb) {
-                cb(self.createVideoUrl(blob), `capture-${videoType}.webm`);
+                cb(self.createVideoUrl(blob), `capture-${self.videoCodec}-${self.config.bitrateKbps}kbps.webm`);
             } else {
                 self.createVideoUrl(blob);
             }
@@ -78,7 +95,7 @@ export class Recorder {
     save(blob) {
         const url = URL.createObjectURL(blob);
 
-        chrome.downloads.download({ url, filename: `capture-${videoType}.webm`, saveAs: true }, function (e) {
+        chrome.downloads.download({ url, filename: `capture-${this.videoCodec}.webm`, saveAs: true }, function (e) {
             console.log("Downloaded");
             window.URL.revokeObjectURL(url);
         });
