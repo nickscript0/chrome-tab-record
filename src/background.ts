@@ -48,6 +48,7 @@ function requestConfigFromContentScript() {
 
 chrome.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
+        sendResponse(null);
         if (request.command === Commands.ReturnConfig) {
             recorder.start(request.data, (url, filename) => {
                 sendUrlToContentScript(url, filename);
@@ -55,6 +56,5 @@ chrome.runtime.onMessage.addListener(
             });
             start = true;
         }
-        sendResponse(null);
     }
 );

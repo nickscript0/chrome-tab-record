@@ -1,13 +1,11 @@
 import { UserConfig, Commands, Codecs } from './types';
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log(`content.ts listener added!`);
+    sendResponse(null);
     if (request.command === Commands.PromptConfig) {
-        console.log(`content.ts got command to promptconfig!`);
         const config = promptConfig();
         chrome.runtime.sendMessage({ command: Commands.ReturnConfig, data: config });
     }
-    sendResponse(null);
 });
 
 function promptConfig(): UserConfig {
