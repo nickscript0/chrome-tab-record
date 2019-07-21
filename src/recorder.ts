@@ -12,8 +12,8 @@ const codecs = {
 };
 
 // const videoType = 'webm';
-// const videoType = 'h264';
-const videoType = 'vp9';
+const videoType = 'h264';
+// const videoType = 'vp9';
 const videoBitsPerSecond = 2500 * 1000;
 
 export class Recorder {
