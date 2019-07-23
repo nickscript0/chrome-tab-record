@@ -1,4 +1,5 @@
 import { UserConfig, Codecs } from "./types";
+import { RecordingStorage } from './storage';
 
 // TODO: look into videoConstraints property on captureOptions to force vp9 to a smaller bitrate possibly?
 const captureOptions: chrome.tabCapture.CaptureOptions = { audio: true, video: true };
@@ -20,15 +21,17 @@ const codecsToMimeType: Codecs = {
 const defaultCodec = 'h264';
 
 export class Recorder {
-    recordedChunks: any[];
+    // recordedChunks: any[];
     mediaRecorder;
     currentStream: MediaStream;
     videoCodec: keyof Codecs;
     config: UserConfig;
+    storage: RecordingStorage;
 
     constructor() {
-        this.recordedChunks = [];
+        // this.recordedChunks = [];
         this.mediaRecorder = null;
+        this.storage = new RecordingStorage();
     }
 
     start(config: UserConfig, cb) {
@@ -37,7 +40,7 @@ export class Recorder {
             return (stream) => {
                 self.currentStream = stream;
                 if (self.currentStream) {
-                    self.recordedChunks = [];
+                    // self.recordedChunks = [];
                     self.videoCodec = defaultCodec;
                     if (!Object.keys(codecsToMimeType).includes(config.encoder)) {
                         console.log(`Unknown codec ${config.encoder} specified, defaulting to ${defaultCodec}`);
@@ -46,7 +49,8 @@ export class Recorder {
                     }
                     const options = { mimeType: codecsToMimeType[self.videoCodec], videoBitsPerSecond: config.bitrateKbps * 1000 };
                     self.mediaRecorder = new MediaRecorder(self.currentStream, options);
-                    self.mediaRecorder.start();
+                    // Record chunks of 1min
+                    self.mediaRecorder.start(60000);
                     console.log(`Started recording with config ${JSON.stringify(config)}`);
 
                     // Stop recording with timeout if user has specified stop recording after some minutes
@@ -59,7 +63,9 @@ export class Recorder {
                         console.log(`ondataavailable with size`, event.data.size);
                         if (event.data.size > 0) {
                             // console.log(`Recording ${options.mimeType}, video: ${self.mediaRecorder.videoBitsPerSecond}bps, audio: ${self.mediaRecorder.audioBitsPerSecond}`);
-                            self.recordedChunks.push(event.data);
+                            // self.recordedChunks.push(event.data);
+                            // TODO: Buggy? nothing is awaiting this storage.add Promise
+                            self.storage.add(event.data);
                         }
                     };
                 }
@@ -72,18 +78,25 @@ export class Recorder {
         if (this.mediaRecorder.state !== 'inactive') this.mediaRecorder.stop();
         const self: Recorder = this;
         this.mediaRecorder.onstop = function (event) {
-            console.log(`onstop(${self.videoCodec}), chunks length`, self.recordedChunks.length);
+            // console.log(`onstop(${self.videoCodec}), chunks length`, self.recordedChunks.length);
+            console.log(`onstop(${self.videoCodec}), chunks length`, self.storage.length);
 
-            const blob = new Blob(self.recordedChunks, {
-                type: codecsToMimeType[self.videoCodec]
+            self.storage.getAll().then(blobParts => {
+                console.log(`Joining ${blobParts.length} video parts`);
+                const blob = new Blob(blobParts, {
+                    type: codecsToMimeType[self.videoCodec]
+                });
+                self.storage.delete().then(() => {
+                    self.currentStream.getTracks().forEach(track => track.stop());
+                    // self.save(blob);
+                    if (cb) {
+                        cb(self.createVideoUrl(blob), `capture-${self.videoCodec}-${self.config.bitrateKbps}kbps.webm`);
+                    } else {
+                        self.createVideoUrl(blob);
+                    }
+                });
             });
-            self.currentStream.getTracks().forEach(track => track.stop());
-            // self.save(blob);
-            if (cb) {
-                cb(self.createVideoUrl(blob), `capture-${self.videoCodec}-${self.config.bitrateKbps}kbps.webm`);
-            } else {
-                self.createVideoUrl(blob);
-            }
+
         };
 
     }
