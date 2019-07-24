@@ -20,10 +20,14 @@ export class RecordingStorage {
     // private currentId: number;
     private runningSizeBytes: number;
 
+    // Set to true to prevent any more add() calls from writing to memory
+    private finished: boolean;
+
     constructor() {
         // TODO somehow use db.ObjectStore.count() do initialize the index from the last session so we can resume recording if the db already has data
 
         // this.currentId = 0;
+        this.finished = false;
         this.runningSizeBytes = 0;
         this.dbPromise = idb.openDB<RecordingDB>(name, SCHEMA_VERSION, {
             upgrade(db, oldVersion, newVersion, transaction) {
@@ -41,6 +45,7 @@ export class RecordingStorage {
     }
 
     async add(chunk: Blob) {
+        if (this.finished) return;
         const db = await this.dbPromise;
         const currentId = await db.count(recordingStoreName);
         const tx = db.transaction(recordingStoreName, 'readwrite');
@@ -68,5 +73,11 @@ export class RecordingStorage {
         // await idb.deleteDB(recordingStoreName);
         // const tx = db.transaction(recordingStoreName, 'readwrite');
         // db.deleteObjectStore(recordingStoreName);
+    }
+
+    // This still doesn't work, likely because async is waiting for user input
+    async finish() {
+        this.finished = true;
+        await this.clear();
     }
 }

@@ -21,7 +21,7 @@ const codecsToMimeType: Codecs = {
 const defaultCodec = 'h264';
 
 // Number of seconds in each chunk written to storage
-const CHUNK_SIZE = 10000; // 60000;
+const CHUNK_SIZE = 60000; // 60000;
 
 export class Recorder {
     // recordedChunks: any[];
@@ -85,11 +85,11 @@ export class Recorder {
             // console.log(`onstop(${self.videoCodec}), chunks length`, await self.storage.count());
 
             self.storage.getAll().then(blobParts => {
-                console.log(`Joining ${blobParts.length} video parts for codec ${self.videoCodec}`);
+                console.log(`Joining ${blobParts.length} video parts for codec ${self.videoCodec}.`);
                 const blob = new Blob(blobParts, {
                     type: codecsToMimeType[self.videoCodec]
                 });
-                self.storage.clear().then(() => {
+                self.storage.finish().then(() => {
                     console.log(`Cleared storage!`);
                     self.currentStream.getTracks().forEach(track => track.stop());
                     // self.save(blob);
