@@ -1,9 +1,9 @@
 /**
  * TODO:
- *  - Store video chunks in IndexedDB as per https://stackoverflow.com/a/55338272/9204336
- *   1. See the available browser storage space in GB: (await navigator.storage.estimate()).quota / 1024 / 1024 /1024
- *   2. Sample recording chunks of video and combining them into a Blob https://developers.google.com/web/updates/2016/01/mediarecorder
- *
+ *  1. Pass remaining quota info to background so we can calculate remaining space and time on the fly and log it
+ *  2. Figure out why windows chrome doesn't save chunks after the 2nd time on after loading the extension
+ *  3. Add check and prompts for resuming unfinished recording sessions "A recording in progress exists would you like to continue it?"
+
  * - Can we use https://developer.chrome.com/apps/fileSystem to write directly to the filesystem instead?
  *   Cons:
  *    1. seems needs to be an App and not an extension: https://stackoverflow.com/a/19813816/9204336

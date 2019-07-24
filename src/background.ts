@@ -1,7 +1,6 @@
 import { Recorder } from './recorder';
 import { Commands, UserConfig } from './types';
 
-let start = false;
 const recorder = new Recorder();
 
 chrome.browserAction.onClicked.addListener(function () {
@@ -11,17 +10,11 @@ chrome.browserAction.onClicked.addListener(function () {
         requestConfigFromContentScript();
     } else {
         console.log(`End tab capture`);
-
         recorder.stop((url, filename) => {
             sendUrlToContentScript(url, filename);
-            start = false;
-
         });
     }
 });
-
-// TODO: to make seekable
-// 1. Try reprocessing as a filereader https://stackoverflow.com/questions/30072946/how-to-get-duration-of-video-when-i-am-using-filereader-to-read-the-video-file
 
 function sendUrlToContentScript(videoUrl, filename) {
     const url = chrome.extension.getURL("display.html");
@@ -52,9 +45,7 @@ chrome.runtime.onMessage.addListener(
         if (request.command === Commands.ReturnConfig) {
             recorder.start(request.data, (url, filename) => {
                 sendUrlToContentScript(url, filename);
-                start = false;
             });
-            start = true;
         }
     }
 );
