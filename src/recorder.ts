@@ -20,6 +20,9 @@ const codecsToMimeType: Codecs = {
 // const videoBitsPerSecond = 2500 * 1000;
 const defaultCodec = 'h264';
 
+// Number of seconds in each chunk written to storage
+const CHUNK_SIZE = 10000; // 60000;
+
 export class Recorder {
     // recordedChunks: any[];
     mediaRecorder;
@@ -50,7 +53,7 @@ export class Recorder {
                     const options = { mimeType: codecsToMimeType[self.videoCodec], videoBitsPerSecond: config.bitrateKbps * 1000 };
                     self.mediaRecorder = new MediaRecorder(self.currentStream, options);
                     // Record chunks of 1min
-                    self.mediaRecorder.start(60000);
+                    self.mediaRecorder.start(CHUNK_SIZE);
                     console.log(`Started recording with config ${JSON.stringify(config)}`);
 
                     // Stop recording with timeout if user has specified stop recording after some minutes
@@ -79,14 +82,15 @@ export class Recorder {
         const self: Recorder = this;
         this.mediaRecorder.onstop = function (event) {
             // console.log(`onstop(${self.videoCodec}), chunks length`, self.recordedChunks.length);
-            console.log(`onstop(${self.videoCodec}), chunks length`, self.storage.length);
+            // console.log(`onstop(${self.videoCodec}), chunks length`, await self.storage.count());
 
             self.storage.getAll().then(blobParts => {
-                console.log(`Joining ${blobParts.length} video parts`);
+                console.log(`Joining ${blobParts.length} video parts for codec ${self.videoCodec}`);
                 const blob = new Blob(blobParts, {
                     type: codecsToMimeType[self.videoCodec]
                 });
-                self.storage.delete().then(() => {
+                self.storage.clear().then(() => {
+                    console.log(`Cleared storage!`);
                     self.currentStream.getTracks().forEach(track => track.stop());
                     // self.save(blob);
                     if (cb) {

@@ -3,6 +3,7 @@
  */
 
 import * as idb from 'idb';
+import { nn } from './types';
 
 const SCHEMA_VERSION = 1;
 const recordingStoreName = 'recordingStorage';
@@ -16,13 +17,14 @@ interface RecordingDB extends idb.DBSchema {
 
 export class RecordingStorage {
     private dbPromise: Promise<idb.IDBPDatabase<RecordingDB>>;
-    private currentId: number;
+    // private currentId: number;
     private runningSizeBytes: number;
 
     constructor() {
         // TODO somehow use db.ObjectStore.count() do initialize the index from the last session so we can resume recording if the db already has data
 
-        this.currentId = 0;
+        // this.currentId = 0;
+        this.runningSizeBytes = 0;
         this.dbPromise = idb.openDB<RecordingDB>(name, SCHEMA_VERSION, {
             upgrade(db, oldVersion, newVersion, transaction) {
                 if (!db.objectStoreNames.contains(recordingStoreName)) {
@@ -33,14 +35,20 @@ export class RecordingStorage {
         });
     }
 
+    async count() {
+        const db = await this.dbPromise;
+        return db.count(recordingStoreName);
+    }
+
     async add(chunk: Blob) {
         const db = await this.dbPromise;
+        const currentId = await db.count(recordingStoreName);
         const tx = db.transaction(recordingStoreName, 'readwrite');
-        await tx.objectStore(recordingStoreName).put(chunk, this.currentId++);
+        await tx.objectStore(recordingStoreName).put(chunk, currentId);
         this.runningSizeBytes += chunk.size;
         console.log(
-            `Stored blob index ${this.currentId - 1} of size ${(chunk.size / 1024 / 1024).toFixed(1)} MB. ` +
-            `Total running size ${(this.runningSizeBytes / 1024 / 1024).toFixed(1)}.`
+            `Stored blob index ${currentId} of size ${nn(chunk.size / 1024 / 1024)} MB. ` +
+            `Total running size ${nn(this.runningSizeBytes / 1024 / 1024)} MB.`
         );
 
         // TODO: Is it enough to await put, or do we need to await tx.oncomplete?
@@ -54,14 +62,11 @@ export class RecordingStorage {
         return store.getAll();
     }
 
-    async delete() {
-        // const db = await this.dbPromise;
-        await idb.deleteDB(recordingStoreName);
+    async clear() {
+        const db = await this.dbPromise;
+        db.clear(recordingStoreName);
+        // await idb.deleteDB(recordingStoreName);
         // const tx = db.transaction(recordingStoreName, 'readwrite');
         // db.deleteObjectStore(recordingStoreName);
-    }
-
-    get length() {
-        return this.currentId;
     }
 }

@@ -15,3 +15,8 @@ export interface UserConfig {
     bitrateKbps: number;
     durationMinutes: number;
 }
+
+// Helper function printing numbers with one decimal place and commas for each thousand
+export function nn(num: number) {
+    return parseFloat(num.toFixed(1)).toLocaleString();
+}

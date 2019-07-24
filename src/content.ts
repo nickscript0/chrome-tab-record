@@ -1,10 +1,11 @@
-import { UserConfig, Commands, Codecs } from './types';
+import { UserConfig, Commands, Codecs, nn } from './types';
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse(null);
     if (request.command === Commands.PromptConfig) {
         estimateRecordingTime().then(recordingTimeMsg => {
             const config = promptConfig(recordingTimeMsg);
+            if (!config) return;
             chrome.runtime.sendMessage({
                 command: Commands.ReturnConfig,
                 data: config
@@ -14,9 +15,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-function promptConfig(recordingTimeMsg: string): UserConfig {
-    const configStr = window.prompt(`Input encoder/bitrate_kbps/duration_minutes e.g., vp9/2500/60\n ${recordingTimeMsg}`, 'h264/2500/0.');
-
+function promptConfig(recordingTimeMsg: string): UserConfig | null {
+    const configStr = window.prompt(`Input encoder/bitrate_kbps/duration_minutes e.g., vp9/2500/60\n\n${recordingTimeMsg}`, 'h264/2500/0');
+    if (configStr === null) return null;
     let config: UserConfig = {
         encoder: 'vp9',
         bitrateKbps: 2500,
@@ -38,8 +39,10 @@ function promptConfig(recordingTimeMsg: string): UserConfig {
 
 async function estimateRecordingTime() {
     const estimate = await navigator.storage.estimate();
-    if (!estimate.quota) return 'Unknown recording storage remaining.';
-    const remainingMB = estimate.quota / 1024 / 1024;
+    if (!estimate.quota || !estimate.usage) return 'Unknown recording storage or usage remaining.';
+    const remainingMB = toMB(estimate.quota - estimate.usage);
+    const usageMB = toMB(estimate.usage);
+    const percentUsage = (estimate.usage / estimate.quota * 100).toFixed(2);
 
     /**
      * h264 2500 kbps: 88 MB / 5min ~= 18 MB / min
@@ -50,7 +53,14 @@ async function estimateRecordingTime() {
     const h264_3000_hours = (remainingMB / 21 / 60).toFixed(1);
     const h264_5000_hours = (remainingMB / 34.6 / 60).toFixed(1);
 
-    const msg = `You have ${(remainingMB / 1024).toFixed(1)}GB of storage remaining. For h264 codec this allows ${h264_2500_hours}h @ 2500kbps, ${h264_3000_hours}h @ 3000kbps, ${h264_5000_hours}h @ 5000kbps`;
+    const msg = `For h264 codec this allows ${h264_2500_hours}h @ 2500kbps, ${h264_3000_hours}h @ 3000kbps, ${h264_5000_hours}h @ 5000kbps.` +
+        `\n\nYou are using ${nn(usageMB)} MB (${percentUsage}%) with ${nn(remainingMB)} MB remaining of total ${nn(toMB(estimate.quota / 1024))} GB storage. `;
+
     console.log(msg);
     return msg;
 }
+
+function toMB(bytes: number): number {
+    return bytes / 1024 / 1024;
+}
+
