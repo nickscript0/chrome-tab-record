@@ -60,7 +60,7 @@ export class Recorder {
                     }
 
                     self.mediaRecorder.ondataavailable = function (event) {
-                        console.log(`ondataavailable with size`, event.data.size);
+                        // console.log(`ondataavailable with size`, event.data.size);
                         if (event.data.size > 0) {
                             // console.log(`Recording ${options.mimeType}, video: ${self.mediaRecorder.videoBitsPerSecond}bps, audio: ${self.mediaRecorder.audioBitsPerSecond}`);
                             // self.recordedChunks.push(event.data);

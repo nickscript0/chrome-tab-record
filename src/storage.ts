@@ -17,6 +17,7 @@ interface RecordingDB extends idb.DBSchema {
 export class RecordingStorage {
     private dbPromise: Promise<idb.IDBPDatabase<RecordingDB>>;
     private currentId: number;
+    private runningSizeBytes: number;
 
     constructor() {
         // TODO somehow use db.ObjectStore.count() do initialize the index from the last session so we can resume recording if the db already has data
@@ -36,7 +37,12 @@ export class RecordingStorage {
         const db = await this.dbPromise;
         const tx = db.transaction(recordingStoreName, 'readwrite');
         await tx.objectStore(recordingStoreName).put(chunk, this.currentId++);
-        console.log(`Stored blob index ${this.currentId - 1} of size ${chunk.size}`);
+        this.runningSizeBytes += chunk.size;
+        console.log(
+            `Stored blob index ${this.currentId - 1} of size ${(chunk.size / 1024 / 1024).toFixed(1)} MB. ` +
+            `Total running size ${(this.runningSizeBytes / 1024 / 1024).toFixed(1)}.`
+        );
+
         // TODO: Is it enough to await put, or do we need to await tx.oncomplete?
         // This answer will depend on how this lib abstracts it https://github.com/jakearchibald/idb
     }

@@ -50,5 +50,7 @@ async function estimateRecordingTime() {
     const h264_3000_hours = (remainingMB / 21 / 60).toFixed(1);
     const h264_5000_hours = (remainingMB / 34.6 / 60).toFixed(1);
 
-    return `You have ${(remainingMB / 1024).toFixed(1)}GB of storage remaining. For h264 codec this allows ${h264_2500_hours}h @ 2500kbps, ${h264_3000_hours}h @ 3000kbps, ${h264_5000_hours}h @ 5000kbps`;
+    const msg = `You have ${(remainingMB / 1024).toFixed(1)}GB of storage remaining. For h264 codec this allows ${h264_2500_hours}h @ 2500kbps, ${h264_3000_hours}h @ 3000kbps, ${h264_5000_hours}h @ 5000kbps`;
+    console.log(msg);
+    return msg;
 }
