@@ -21,13 +21,13 @@ export class RecordingStorage {
     private runningSizeBytes: number;
 
     // Set to true to prevent any more add() calls from writing to memory
-    private finished: boolean;
+    // private finished: boolean;
 
     constructor() {
         // TODO somehow use db.ObjectStore.count() do initialize the index from the last session so we can resume recording if the db already has data
 
         // this.currentId = 0;
-        this.finished = false;
+        // this.finished = false;
         this.runningSizeBytes = 0;
         this.dbPromise = idb.openDB<RecordingDB>(name, SCHEMA_VERSION, {
             upgrade(db, oldVersion, newVersion, transaction) {
@@ -45,20 +45,16 @@ export class RecordingStorage {
     }
 
     async add(chunk: Blob) {
-        if (this.finished) {
-            console.log(`storage.add: finished is true skipping chunk!`);
-            return;
-        }
+        // if (this.finished) {
+        //     console.log(`storage.add: finished is true skipping chunk!`);
+        //     return;
+        // }
         const db = await this.dbPromise;
         const currentId = await db.count(recordingStoreName);
         const tx = db.transaction(recordingStoreName, 'readwrite');
         await tx.objectStore(recordingStoreName).put(chunk, currentId);
         this.runningSizeBytes += chunk.size;
-        console.log(
-            `Stored blob index ${currentId} of size ${nn(chunk.size / 1024 / 1024)} MB. ` +
-            `Total running size ${nn(this.runningSizeBytes / 1024 / 1024)} MB.`
-        );
-
+        return { currentId, chunkSize: chunk.size };
         // TODO: Is it enough to await put, or do we need to await tx.oncomplete?
         // This answer will depend on how this lib abstracts it https://github.com/jakearchibald/idb
     }
@@ -80,7 +76,7 @@ export class RecordingStorage {
 
     // This still doesn't work, likely because async is waiting for user input
     async finish() {
-        this.finished = true;
+        // this.finished = true;
         await this.clear();
     }
 }

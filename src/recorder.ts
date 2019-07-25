@@ -1,4 +1,4 @@
-import { UserConfig, Codecs } from "./types";
+import { UserConfig, Codecs, nn } from "./types";
 import { RecordingStorage } from './storage';
 
 // TODO: look into videoConstraints property on captureOptions to force vp9 to a smaller bitrate possibly?
@@ -18,7 +18,7 @@ const codecsToMimeType: Codecs = {
 const defaultCodec = 'h264';
 
 // Number of seconds in each chunk written to storage
-const CHUNK_SIZE = 20000;
+const CHUNK_DURATION_MS = 60000;
 
 export class Recorder {
     // recordedChunks: any[];
@@ -27,13 +27,15 @@ export class Recorder {
     videoCodec: keyof Codecs;
     config: UserConfig;
     storage: RecordingStorage;
+    runningSizeBytes: number;
 
     constructor() {
         this.mediaRecorder = null;
         this.storage = new RecordingStorage();
+        this.runningSizeBytes = 0;
     }
 
-    start(config: UserConfig, cb) {
+    start(config: UserConfig, storageEstimate: StorageEstimate, cb) {
         this.config = config;
         function createListener(self: Recorder) {
             return (stream) => {
@@ -47,8 +49,8 @@ export class Recorder {
                     }
                     const options = { mimeType: codecsToMimeType[self.videoCodec], videoBitsPerSecond: config.bitrateKbps * 1000 };
                     self.mediaRecorder = new MediaRecorder(self.currentStream, options);
-                    self.mediaRecorder.start(CHUNK_SIZE);
-                    console.log(`Started recording with config ${JSON.stringify(config)}`);
+                    self.mediaRecorder.start(CHUNK_DURATION_MS);
+                    console.log(`Started recording with config ${JSON.stringify(config)} chunkSize: ${CHUNK_DURATION_MS / 1000}s`);
 
                     // Stop recording with timeout if user has specified stop recording after some minutes
                     if (config.durationMinutes) {
@@ -59,7 +61,12 @@ export class Recorder {
                     self.mediaRecorder.ondataavailable = function (event) {
                         if (event.data.size > 0) {
                             // TODO: Buggy? nothing is awaiting this storage.add Promise
-                            self.storage.add(event.data);
+                            self.storage.add(event.data).then(info => {
+                                if (info) {
+                                    self.runningSizeBytes += info.chunkSize;
+                                    logEstimates(info.currentId, storageEstimate, self.runningSizeBytes, info.chunkSize, CHUNK_DURATION_MS / 1000);
+                                }
+                            });
                         }
                     };
                 }
@@ -101,6 +108,7 @@ export class Recorder {
 
         chrome.downloads.download({ url, filename: `capture-${this.videoCodec}.webm`, saveAs: true }, function (e) {
             console.log("Downloaded");
+            // TODO: this is not being called, where can we better call revokeObjectURL?
             window.URL.revokeObjectURL(url);
         });
     }
@@ -111,4 +119,23 @@ export class Recorder {
         return url;
     }
 
+}
+
+
+function logEstimates(currentId: number, estimate: StorageEstimate, runningSizeBytes: number, chunkSize: number, chunkDurationSeconds: number) {
+    const toMB = b => b / 1024 / 1024;
+    if (!estimate.quota || !estimate.usage) return undefined;
+    const currentUsageBytes = estimate.usage + runningSizeBytes;
+
+    const remainingBytes = estimate.quota - currentUsageBytes;
+    const remainingMB = toMB(remainingBytes);
+    // const usageMB = toMB(currentUsageBytes);
+    const percentUsage = (currentUsageBytes / estimate.quota * 100).toFixed(2);
+
+    const recordingHoursRemaining = nn(chunkDurationSeconds * (remainingBytes / chunkSize) / 3600);
+    console.log(
+        `Stored blob index ${currentId} of size ${nn(chunkSize / 1024 / 1024)} MB. ` +
+        `Total running size ${nn(runningSizeBytes / 1024 / 1024)} MB.\n` + 
+        `Recording hours remaining ${recordingHoursRemaining}h, [Storage Usage: ${percentUsage}%, ${nn(remainingMB)} MB remaining]`
+    );
 }

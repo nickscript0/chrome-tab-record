@@ -43,7 +43,7 @@ chrome.runtime.onMessage.addListener(
     function (request, sender, sendResponse) {
         sendResponse(null);
         if (request.command === Commands.ReturnConfig) {
-            recorder.start(request.data, (url, filename) => {
+            recorder.start(request.data, request.storageEstimate, (url, filename) => {
                 sendUrlToContentScript(url, filename);
             });
         }

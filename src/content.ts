@@ -3,15 +3,19 @@ import { UserConfig, Commands, Codecs, nn } from './types';
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse(null);
     if (request.command === Commands.PromptConfig) {
-        estimateRecordingTime().then(recordingTimeMsg => {
-            const config = promptConfig(recordingTimeMsg);
-            if (!config) return;
-            chrome.runtime.sendMessage({
-                command: Commands.ReturnConfig,
-                data: config
-            });
+        estimateRecordingTime().then(estimate => {
+            if (estimate) {
+                const config = promptConfig(estimate.msg);
+                if (!config) return;
+                chrome.runtime.sendMessage({
+                    command: Commands.ReturnConfig,
+                    data: config,
+                    storageEstimate: estimate.storageEstimate
+                });
+            } else {
+                console.log(`Error: unable to retrive StorageEstimate`);
+            }
         });
-
     }
 });
 
@@ -39,7 +43,7 @@ function promptConfig(recordingTimeMsg: string): UserConfig | null {
 
 async function estimateRecordingTime() {
     const estimate = await navigator.storage.estimate();
-    if (!estimate.quota || !estimate.usage) return 'Unknown recording storage or usage remaining.';
+    if (!estimate.quota || !estimate.usage) return undefined;
     const remainingMB = toMB(estimate.quota - estimate.usage);
     const usageMB = toMB(estimate.usage);
     const percentUsage = (estimate.usage / estimate.quota * 100).toFixed(2);
@@ -57,7 +61,10 @@ async function estimateRecordingTime() {
         `\n\nYou are using ${nn(usageMB)} MB (${percentUsage}%) with ${nn(remainingMB)} MB remaining of total ${nn(toMB(estimate.quota / 1024))} GB storage. `;
 
     console.log(msg);
-    return msg;
+    return {
+        msg,
+        storageEstimate: estimate
+    };
 }
 
 function toMB(bytes: number): number {
