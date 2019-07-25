@@ -45,7 +45,10 @@ export class RecordingStorage {
     }
 
     async add(chunk: Blob) {
-        if (this.finished) return;
+        if (this.finished) {
+            console.log(`storage.add: finished is true skipping chunk!`);
+            return;
+        }
         const db = await this.dbPromise;
         const currentId = await db.count(recordingStoreName);
         const tx = db.transaction(recordingStoreName, 'readwrite');

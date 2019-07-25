@@ -14,14 +14,11 @@ const codecsToMimeType: Codecs = {
     // avc1: 'video/webm;codecs=avc1' // 37 MB
 };
 
-// const videoType = 'webm';
-// const videoType = 'h264';
-// const videoType = 'vp9';
 // const videoBitsPerSecond = 2500 * 1000;
 const defaultCodec = 'h264';
 
 // Number of seconds in each chunk written to storage
-const CHUNK_SIZE = 60000; // 60000;
+const CHUNK_SIZE = 20000;
 
 export class Recorder {
     // recordedChunks: any[];
@@ -32,7 +29,6 @@ export class Recorder {
     storage: RecordingStorage;
 
     constructor() {
-        // this.recordedChunks = [];
         this.mediaRecorder = null;
         this.storage = new RecordingStorage();
     }
@@ -43,7 +39,6 @@ export class Recorder {
             return (stream) => {
                 self.currentStream = stream;
                 if (self.currentStream) {
-                    // self.recordedChunks = [];
                     self.videoCodec = defaultCodec;
                     if (!Object.keys(codecsToMimeType).includes(config.encoder)) {
                         console.log(`Unknown codec ${config.encoder} specified, defaulting to ${defaultCodec}`);
@@ -52,7 +47,6 @@ export class Recorder {
                     }
                     const options = { mimeType: codecsToMimeType[self.videoCodec], videoBitsPerSecond: config.bitrateKbps * 1000 };
                     self.mediaRecorder = new MediaRecorder(self.currentStream, options);
-                    // Record chunks of 1min
                     self.mediaRecorder.start(CHUNK_SIZE);
                     console.log(`Started recording with config ${JSON.stringify(config)}`);
 
@@ -63,10 +57,7 @@ export class Recorder {
                     }
 
                     self.mediaRecorder.ondataavailable = function (event) {
-                        // console.log(`ondataavailable with size`, event.data.size);
                         if (event.data.size > 0) {
-                            // console.log(`Recording ${options.mimeType}, video: ${self.mediaRecorder.videoBitsPerSecond}bps, audio: ${self.mediaRecorder.audioBitsPerSecond}`);
-                            // self.recordedChunks.push(event.data);
                             // TODO: Buggy? nothing is awaiting this storage.add Promise
                             self.storage.add(event.data);
                         }
@@ -81,9 +72,6 @@ export class Recorder {
         if (this.mediaRecorder.state !== 'inactive') this.mediaRecorder.stop();
         const self: Recorder = this;
         this.mediaRecorder.onstop = function (event) {
-            // console.log(`onstop(${self.videoCodec}), chunks length`, self.recordedChunks.length);
-            // console.log(`onstop(${self.videoCodec}), chunks length`, await self.storage.count());
-
             self.storage.getAll().then(blobParts => {
                 console.log(`Joining ${blobParts.length} video parts for codec ${self.videoCodec}.`);
                 const blob = new Blob(blobParts, {
@@ -92,7 +80,6 @@ export class Recorder {
                 self.storage.finish().then(() => {
                     console.log(`Cleared storage!`);
                     self.currentStream.getTracks().forEach(track => track.stop());
-                    // self.save(blob);
                     if (cb) {
                         cb(self.createVideoUrl(blob), `capture-${self.videoCodec}-${self.config.bitrateKbps}kbps.webm`);
                     } else {
