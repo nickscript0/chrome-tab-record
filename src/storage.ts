@@ -3,7 +3,6 @@
  */
 
 import * as idb from 'idb';
-import { nn } from './types';
 
 const SCHEMA_VERSION = 1;
 const recordingStoreName = 'recordingStorage';
@@ -18,7 +17,7 @@ interface RecordingDB extends idb.DBSchema {
 export class RecordingStorage {
     private dbPromise: Promise<idb.IDBPDatabase<RecordingDB>>;
     // private currentId: number;
-    private runningSizeBytes: number;
+    // private runningSizeBytes: number;
 
     // Set to true to prevent any more add() calls from writing to memory
     // private finished: boolean;
@@ -28,7 +27,7 @@ export class RecordingStorage {
 
         // this.currentId = 0;
         // this.finished = false;
-        this.runningSizeBytes = 0;
+        // this.runningSizeBytes = 0;
         this.dbPromise = idb.openDB<RecordingDB>(name, SCHEMA_VERSION, {
             upgrade(db, oldVersion, newVersion, transaction) {
                 if (!db.objectStoreNames.contains(recordingStoreName)) {
@@ -53,7 +52,7 @@ export class RecordingStorage {
         const currentId = await db.count(recordingStoreName);
         const tx = db.transaction(recordingStoreName, 'readwrite');
         await tx.objectStore(recordingStoreName).put(chunk, currentId);
-        this.runningSizeBytes += chunk.size;
+        // this.runningSizeBytes += chunk.size;
         return { currentId, chunkSize: chunk.size };
         // TODO: Is it enough to await put, or do we need to await tx.oncomplete?
         // This answer will depend on how this lib abstracts it https://github.com/jakearchibald/idb

@@ -86,6 +86,7 @@ export class Recorder {
                 });
                 self.storage.finish().then(() => {
                     console.log(`Cleared storage!`);
+                    self.runningSizeBytes = 0;
                     self.currentStream.getTracks().forEach(track => track.stop());
                     if (cb) {
                         cb(self.createVideoUrl(blob), `capture-${self.videoCodec}-${self.config.bitrateKbps}kbps.webm`);
